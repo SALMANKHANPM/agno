@@ -175,6 +175,7 @@ clickhouse = ["clickhouse-connect"]
 pinecone = ["pinecone==5.4.2"]
 surrealdb = ["surrealdb>=1.0.4"]
 upstash = ["upstash-vector"]
+meilisearch = ["meilisearch"]
 
 # Dependencies for Knowledge
 pdf = ["pypdf", "rapidocr_onnxruntime"]
