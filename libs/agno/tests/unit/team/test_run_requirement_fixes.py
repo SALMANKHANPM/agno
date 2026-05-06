@@ -4,7 +4,7 @@ import pytest
 
 from agno.models.response import ToolExecution
 from agno.run.requirement import RunRequirement
-from agno.tools.function import UserInputField
+from agno.tools.function import UserFeedbackQuestion, UserInputField
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -280,3 +280,53 @@ class TestIsResolved:
         # Now resolve external execution
         req.set_external_execution_result("done")
         assert req.is_resolved() is True
+
+
+# ===========================================================================
+# 7. Continue payload: requirement-level HITL schema syncs to tool_execution
+# ===========================================================================
+
+
+class TestRunRequirementFromDictHitlSchemaSync:
+    """Team continue_run merges req.tool_execution into run_response.tools; selections must live there."""
+
+    def test_user_feedback_schema_on_root_copied_to_tool_execution(self):
+        payload = {
+            "id": "req-1",
+            "tool_execution": {
+                "tool_call_id": "tc-1",
+                "tool_name": "ask_user",
+                "tool_args": {"questions": []},
+                "requires_user_input": True,
+                "answered": True,
+            },
+            "user_feedback_schema": [
+                {
+                    "question": "Which customer?",
+                    "header": "Customer",
+                    "multi_select": False,
+                    "selected_options": ["PARR CONSTRUCTION"],
+                    "options": [
+                        {"label": "PARR CONSTRUCTION", "description": "A", "selected": True},
+                        {"label": "Other", "description": "B", "selected": False},
+                    ],
+                }
+            ],
+        }
+        req = RunRequirement.from_dict(payload)
+        assert req.tool_execution is not None
+        assert req.tool_execution.user_feedback_schema is not None
+        assert req.tool_execution.user_feedback_schema[0].selected_options == ["PARR CONSTRUCTION"]
+        assert req.user_feedback_schema is req.tool_execution.user_feedback_schema
+
+    def test_user_feedback_option_flags_populate_selected_options(self):
+        q = UserFeedbackQuestion.from_dict(
+            {
+                "question": "Pick one",
+                "options": [
+                    {"label": "A", "selected": True},
+                    {"label": "B", "selected": False},
+                ],
+            }
+        )
+        assert q.selected_options == ["A"]

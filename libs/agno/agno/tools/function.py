@@ -120,12 +120,17 @@ class UserFeedbackQuestion:
         options = None
         if data.get("options") is not None:
             options = [UserFeedbackOption.from_dict(opt) if isinstance(opt, dict) else opt for opt in data["options"]]
+        selected_options: Optional[List[str]] = data.get("selected_options")
+        if selected_options is None and options:
+            derived = [opt.label for opt in options if getattr(opt, "selected", False)]
+            if derived:
+                selected_options = derived
         return cls(
             question=data["question"],
             header=data.get("header"),
             options=options,
             multi_select=data.get("multi_select", False),
-            selected_options=data.get("selected_options"),
+            selected_options=selected_options,
         )
 
 

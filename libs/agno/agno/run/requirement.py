@@ -269,4 +269,13 @@ class RunRequirement:
                     rebuilt_feedback.append(UserFeedbackQuestion.from_dict(item))
             requirement.user_feedback_schema = rebuilt_feedback if rebuilt_feedback else None
 
+        # Clients often send user_feedback_schema / user_input_schema on the requirement root
+        # while omitting or duplicating them on tool_execution. HITL handlers read from
+        # tool_execution (e.g. ask_user), so keep both in sync after deserialization.
+        if requirement.tool_execution is not None:
+            if requirement.user_feedback_schema is not None:
+                requirement.tool_execution.user_feedback_schema = requirement.user_feedback_schema
+            if requirement.user_input_schema is not None:
+                requirement.tool_execution.user_input_schema = requirement.user_input_schema
+
         return requirement
