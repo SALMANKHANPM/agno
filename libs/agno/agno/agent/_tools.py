@@ -111,8 +111,10 @@ def get_tools(
 ) -> List[Union[Toolkit, Callable, Function, Dict]]:
     from agno.agent import _default_tools, _init
     from agno.utils.callables import (
+        get_resolved_members,
         get_resolved_knowledge,
         get_resolved_tools,
+        resolve_callable_members,
         resolve_callable_knowledge,
         resolve_callable_tools,
     )
@@ -122,9 +124,11 @@ def get_tools(
     # Resolve callable factories
     resolve_callable_tools(agent, run_context)
     resolve_callable_knowledge(agent, run_context)
+    resolve_callable_members(agent, run_context)
 
     resolved_tools = get_resolved_tools(agent, run_context)
     resolved_knowledge = get_resolved_knowledge(agent, run_context)
+    resolved_members = get_resolved_members(agent, run_context)
 
     # Connect tools that require connection management
     _init.connect_connectable_tools(agent)
@@ -202,6 +206,22 @@ def get_tools(
     if agent.skills is not None:
         agent_tools.extend(agent.skills.get_tools())
 
+    if resolved_members:
+        from agno.agent import _members
+
+        agent_tools.append(
+            _members.get_delegate_task_function(
+                agent,
+                run_response=run_response,
+                run_context=run_context,
+                session=session,
+                user_id=user_id,
+                stream=False,
+                stream_events=False,
+                async_mode=False,
+            )
+        )
+
     return agent_tools
 
 
@@ -216,7 +236,9 @@ async def aget_tools(
     from agno.agent import _default_tools, _init
     from agno.utils.callables import (
         aresolve_callable_knowledge,
+        aresolve_callable_members,
         aresolve_callable_tools,
+        get_resolved_members,
         get_resolved_knowledge,
         get_resolved_tools,
     )
@@ -226,9 +248,11 @@ async def aget_tools(
     # Resolve callable factories
     await aresolve_callable_tools(agent, run_context)
     await aresolve_callable_knowledge(agent, run_context)
+    await aresolve_callable_members(agent, run_context)
 
     resolved_tools = get_resolved_tools(agent, run_context)
     resolved_knowledge = get_resolved_knowledge(agent, run_context)
+    resolved_members = get_resolved_members(agent, run_context)
 
     # Connect tools that require connection management
     _init.connect_connectable_tools(agent)
@@ -333,6 +357,22 @@ async def aget_tools(
     # Add tools for accessing skills
     if agent.skills is not None:
         agent_tools.extend(agent.skills.get_tools())
+
+    if resolved_members:
+        from agno.agent import _members
+
+        agent_tools.append(
+            _members.get_delegate_task_function(
+                agent,
+                run_response=run_response,
+                run_context=run_context,
+                session=session,
+                user_id=user_id,
+                stream=False,
+                stream_events=False,
+                async_mode=True,
+            )
+        )
 
     return agent_tools
 

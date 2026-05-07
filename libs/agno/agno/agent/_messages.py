@@ -253,6 +253,13 @@ def get_system_message(
                     system_message_content += f"- {_upi}\n"
             else:
                 system_message_content += instructions[0] + "\n\n"
+
+    # 3.3.4 Add member coordination context
+    if agent.members:
+        from agno.agent import _members
+
+        system_message_content += _members.build_members_context(agent, run_context=run_context)
+
     # 3.3.4 Add additional information
     if len(additional_information) > 0:
         system_message_content += "<additional_information>"
@@ -601,6 +608,13 @@ async def aget_system_message(
                     system_message_content += f"- {_upi}\n"
             else:
                 system_message_content += instructions[0] + "\n\n"
+
+    # 3.3.4 Add member coordination context
+    if agent.members:
+        from agno.agent import _members
+
+        system_message_content += _members.build_members_context(agent, run_context=run_context, async_mode=True)
+
     # 3.3.4 Add additional information
     if len(additional_information) > 0:
         system_message_content += "<additional_information>"

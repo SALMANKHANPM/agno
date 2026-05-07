@@ -165,6 +165,18 @@ class Agent:
     # Can also be a callable factory that returns a list of tools at runtime.
     tools: Optional[Union[List[Union[Toolkit, Callable, Function, Dict]], Callable[..., List]]] = None
 
+    # --- Agent Members ---
+    # Optional member agents or teams this agent can coordinate through delegation tools.
+    members: Optional[Union[List[Any], Callable[..., List]]] = None
+    # If True, delegate the same task to all members instead of letting the agent choose one.
+    delegate_to_all_members: bool = False
+    # Set to False to send the original user input directly to members.
+    determine_input_for_members: bool = True
+    # If True, include member tool names in the system prompt.
+    add_member_tools_to_context: bool = False
+    # If True, stream member events through the parent agent run.
+    stream_member_events: bool = True
+
     # Maximum number of tool calls allowed.
     tool_call_limit: Optional[int] = None
     # Controls which (if any) tool is called by the model.
@@ -423,6 +435,11 @@ class Agent:
         skills: Optional[Skills] = None,
         metadata: Optional[Dict[str, Any]] = None,
         tools: Optional[Union[Sequence[Union[Toolkit, Callable, Function, Dict]], Callable[..., List]]] = None,
+        members: Optional[Union[Sequence[Any], Callable[..., List]]] = None,
+        delegate_to_all_members: bool = False,
+        determine_input_for_members: bool = True,
+        add_member_tools_to_context: bool = False,
+        stream_member_events: bool = True,
         tool_call_limit: Optional[int] = None,
         tool_choice: Optional[Union[str, Dict[str, Any]]] = None,
         tool_hooks: Optional[List[Callable]] = None,
@@ -591,6 +608,18 @@ class Agent:
             self.tools = tools  # type: ignore[assignment]
         else:
             self.tools = list(tools)  # type: ignore[arg-type]
+
+        if members is None:
+            self.members = []
+        elif is_callable_factory(members, excluded_types=(Toolkit, Function)):
+            self.members = members  # type: ignore[assignment]
+        else:
+            self.members = list(members)  # type: ignore[arg-type]
+        self.delegate_to_all_members = delegate_to_all_members
+        self.determine_input_for_members = determine_input_for_members
+        self.add_member_tools_to_context = add_member_tools_to_context
+        self.stream_member_events = stream_member_events
+
         self.tool_call_limit = tool_call_limit
         self.tool_choice = tool_choice
         self.tool_hooks = tool_hooks
@@ -701,6 +730,7 @@ class Agent:
         self.cache_callables = cache_callables
         self.callable_tools_cache_key = callable_tools_cache_key
         self.callable_knowledge_cache_key = callable_knowledge_cache_key
+        self._callable_members_cache: Dict[str, List[Any]] = {}
         self._callable_tools_cache: Dict[str, List[Any]] = {}
         self._callable_knowledge_cache: Dict[str, Any] = {}
 
@@ -751,7 +781,7 @@ class Agent:
 
     def clear_callable_cache(
         self,
-        kind: Optional[Literal["tools", "knowledge"]] = None,
+        kind: Optional[Literal["tools", "knowledge", "members"]] = None,
         close: bool = False,
     ) -> None:
         from agno.utils.callables import clear_callable_cache
@@ -760,7 +790,7 @@ class Agent:
 
     async def aclear_callable_cache(
         self,
-        kind: Optional[Literal["tools", "knowledge"]] = None,
+        kind: Optional[Literal["tools", "knowledge", "members"]] = None,
         close: bool = False,
     ) -> None:
         from agno.utils.callables import aclear_callable_cache
@@ -810,6 +840,15 @@ class Agent:
     # ---------------------------------------------------------------
     # _messages module delegates
     # ---------------------------------------------------------------
+
+    def get_members_system_message_content(
+        self, indent: int = 0, run_context: Optional[RunContext] = None, async_mode: bool = False
+    ) -> str:
+        from agno.agent import _members
+
+        return _members.get_members_system_message_content(
+            self, indent=indent, run_context=run_context, async_mode=async_mode
+        )
 
     def get_system_message(
         self,
